@@ -117,6 +117,7 @@ CGFloat ClipFloatToMinMax(CGFloat in, CGFloat min, CGFloat max)
     if (self)
     {
         self.exportType = @"public.png";
+        self.distance = 0.1;
         // self.exportType = @"public.tiff";
         // Processing the args goes here.
         BOOL gotFile1 = NO;
@@ -260,6 +261,7 @@ CGFloat ClipFloatToMinMax(CGFloat in, CGFloat min, CGFloat max)
     [diffFilter setValue:[CIImage imageWithCGImage:image2] forKey:@"inputBackgroundImage"];
     
     CIFilter *areaMaxFilter = [CIFilter filterWithName:@"CIAreaMaximum"];
+    [areaMaxFilter setDefaults];
     CIImage *intermediateImage = [diffFilter valueForKey:@"outputImage"];
     SaveCIImageToAPNGFile(intermediateImage, @"deleteme.png");
     [areaMaxFilter setValue:intermediateImage forKey:@"inputImage"];
@@ -269,9 +271,11 @@ CGFloat ClipFloatToMinMax(CGFloat in, CGFloat min, CGFloat max)
     [areaMaxFilter setValue:extentVector forKey:@"inputExtent"];
     CGColorSpaceRef colorSpace = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
     // CGColorSpaceRef colorSpace = CGColorSpaceCreateWithName(kCGColorSpaceGenericRGB);
-    float buff[4] = { 1.0, 1.0, 1.0, 1.0 };
-    CGContextRef context = CGBitmapContextCreate(buff, 1, 1, 32, 16, colorSpace,
-                                    kCGBitmapFloatComponents +
+    //    float buff[4] = { 1.0, 1.0, 1.0, 1.0 };
+    unsigned char buff[4];
+    CGContextRef context = CGBitmapContextCreate(buff, 1, 1, 8, 16, colorSpace,
+    //CGContextRef context = CGBitmapContextCreate(buff, 1, 1, 32, 16, colorSpace,
+    //                                                kCGBitmapFloatComponents +
                                     (CGBitmapInfo)kCGImageAlphaPremultipliedLast);
 
     NSDictionary *ciContextOptions;
@@ -292,46 +296,27 @@ CGFloat ClipFloatToMinMax(CGFloat in, CGFloat min, CGFloat max)
     areaMaxFilter = nil;
     extentVector = nil;
     // Check the alpha channel as well as all the others.
-    if (buff[0] < self.distance && buff[1] < self.distance &&
-        buff[2] < self.distance && buff[3] < self.distance)
-        self.areEqual = YES;
+    //    if (buff[0] < self.distance && buff[1] < self.distance && buff[2] < self.distance)
+    // self.areEqual = YES;
     
+    unsigned char dist = 255 * self.distance;
+    if (buff[0] < dist && buff[1] < dist && buff[2] < dist)
+        self.areEqual = YES;
+
+    CGContextRelease(context);
     return result;
 }
 
 -(int)run
 {
-    int result = 0;
-    int areDifferent = 1;
-    
-    result = [self compareFiles];
-    if (!result)
-        areDifferent = self.areEqual ? 1 : 0;
-
-    return areDifferent;
+    int result = [self compareFiles];
+    return result;
 }
 
 +(void)printUsage
 {
-    printf("chromakey - usage:\n");
-    printf("Based on the specified chroma key color and the chroma key distance and slope width an alpha channel is added to the image.\n");
-    printf("The output file name is the same as the input file name, except for the file name extension which is replaced with png\n");
-	printf("	./chromakey [-parameter <value> ...]\n");
-	printf("	parameters are all preceded by a -<parameterName>.  The order of the parameters is unimportant.\n");
-	printf("	Required parameters are -source <sourceFile/Folder URL> -destination <outputFolderURL> -red <X.X> -green <X.X> -blue <X.X> \n");
-	printf("	Available parameters are:\n");
-	printf("		-destination <outputFolderURL> The folder to export the new image file to.\n");
-	printf("		-source <sourceFile/Folder URL> The source file, or \n");
-    printf("		-red <X.X> The red color component value for the chroma key color. Range from 0.0 to 1.0\n");
-    printf("		-green <X.X> The green color component value for the chroma key color. Range from 0.0 to 1.0\n");
-    printf("		-blue <X.X> The blue color component value for the chroma key color. Range from 0.0 to 1.0\n");
-	printf("		-distance <X.X> The spread of the chroma key color. Optional. Default is 0.08. Range is from 0.0 to 1.0\n");
-	printf("		-slopewidth <X.X> The width of the slope in the when sliding from an alpa of 0.0 to an alpha of 1.0. Optional. Default 0.06. Range: 0.0 to 1.7\n");
-	printf("	Sample chromakey uses:\n");
-    printf("        A fairly wide range of colors near green that will be transparent. The small slopewidth means a sharp transition from transparent to opaque.\n");
-	printf("	./chromakey -source ~/Pictures -destination ~/Desktop/junkimages -red 0.0 -green 1.0 -blue 0.0 -distance 0.2 -slopewidth 0.02\n");
-    printf("		Make dark greys transparent and a gradual transition from transparent to opaque with a larger slope width.\n");
-	printf("	./chromakey -source ~/Pictures -destination ~/Desktop/junkimages -red 0.2 -green 0.2 -blue 0.2 -distance 0.08 -slopewidth 0.2\n");
+    printf("compareimages - usage:\n");
+    printf("Not yet implemented.\n");
 }
 
 @end
@@ -339,6 +324,7 @@ CGFloat ClipFloatToMinMax(CGFloat in, CGFloat min, CGFloat max)
 int main(int argc, const char * argv[])
 {
     int result = -1;
+    BOOL areEqual;
     @autoreleasepool
     {
         //	NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
@@ -350,11 +336,13 @@ int main(int argc, const char * argv[])
             if (processor)
             {
                 result = [processor run];
+                areEqual = processor.areEqual;
             }
             else
                 [YVSCompareImageFilesProcessor printUsage];
         }
     }
-    printf("Are different: %d\n", result);
+    if (result == 0)
+        printf("Equal: %s\n", areEqual ? "YES" : "NO");
     return result;
 }
