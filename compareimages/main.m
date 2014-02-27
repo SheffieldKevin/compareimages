@@ -373,9 +373,9 @@ CGFloat ClipFloatToMinMax(CGFloat in, CGFloat min, CGFloat max)
     printf("		-distance <X> The chromatic difference in any color component permitted. Default 10. Range 0 to 255.\n");
 	printf("	Sample compareimages usage:\n");
     printf("        A fairly fairly loose idea of what constitutes as two images being the same.\n");
-	printf("	./compareimages -file1 \"~/Pictures/file1.png\" -file2 \"~/Desktop/file2.png\" -distance 30\n");
+	printf("	  ./compareimages -file1 \"~/Pictures/file1.png\" -file2 \"~/Desktop/file2.png\" -distance 30\n");
     printf("		The pixel values in image 1 have to be exactly the same as image 2 to report images as the same.\n");
-	printf("	./compareimages -file1 \"~/Pictures/file1.png\" -file2 \"~/Desktop/file2.png\" -distance 0\n");
+	printf("      ./compareimages -file1 \"~/Pictures/file1.png\" -file2 \"~/Desktop/file2.png\" -distance 0\n");
 }
 
 @end
