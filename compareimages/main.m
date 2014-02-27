@@ -18,7 +18,7 @@
 
 @property (nonatomic, strong) NSString *programName;
 @property (nonatomic, strong) NSString *exportType; // hard coded to png or tiff
-@property (nonatomic, assign) float distance;
+@property (nonatomic, assign) unsigned char distance;
 @property (nonatomic, strong) NSURL *file1;
 @property (nonatomic, strong) NSURL *file2;
 @property (nonatomic, assign) BOOL areEqual;
@@ -66,8 +66,10 @@ void SaveCIImageToAPNGFile(CIImage *ciImage, NSString *fileName)
     CIContext *ciContext = [CIContext contextWithCGContext:context options:nil];
     [ciContext drawImage:ciImage inRect:extent fromRect:extent];
     SaveCGBitmapContextToAPNGFile(context, fileName);
+    CGContextRelease(context);
 }
 
+/*
 BOOL GetCGFloatFromString(NSString *string, CGFloat *value)
 {
     NSScanner *scanner = [[NSScanner alloc] initWithString:string];
@@ -80,6 +82,24 @@ BOOL GetCGFloatFromString(NSString *string, CGFloat *value)
     if (gotValue)
     {
         *value = floatVal;
+    }
+    return gotValue;
+}
+*/
+
+// Scan the string as an integer, then check value is in range for success.
+BOOL GetUnsignedCharFromString(NSString *string, unsigned char *val)
+{
+    NSScanner *scanner = [[NSScanner alloc] initWithString:string];
+    int intVal;
+    BOOL gotValue = [scanner scanInt:&intVal];
+    if (gotValue)
+    {
+        if (intVal < 0 || intVal > 255)
+            gotValue = NO;
+        
+        if (gotValue)
+            *val = intVal;
     }
     return gotValue;
 }
@@ -117,7 +137,7 @@ CGFloat ClipFloatToMinMax(CGFloat in, CGFloat min, CGFloat max)
     if (self)
     {
         self.exportType = @"public.png";
-        self.distance = 0.1;
+        self.distance = 20;
         // self.exportType = @"public.tiff";
         // Processing the args goes here.
         BOOL gotFile1 = NO;
@@ -168,17 +188,18 @@ CGFloat ClipFloatToMinMax(CGFloat in, CGFloat min, CGFloat max)
                 argc--;
                 if (argc >= 0)
                 {
-                    CGFloat dist;
+                    unsigned char dist;
                     NSString *distance = @(*argv++);
                     
-                    BOOL gotDistance = GetCGFloatFromString(distance, &dist);
+                    BOOL gotDistance = GetUnsignedCharFromString(distance, &dist);
                     if (gotDistance)
                     {
-                        dist = ClipFloatToMinMax(dist, 0.0, 1.7);
                         self.distance = dist;
                     }
                     else
-                        self.distance = 0.1;
+                    {
+                        self.distance = 20;
+                    }
                 }
             }
         }
@@ -239,11 +260,9 @@ CGFloat ClipFloatToMinMax(CGFloat in, CGFloat min, CGFloat max)
         return result;
     }
     
-    // Get an already created graphic context or create a new one if necessary.
     size_t imageWidth1 = CGImageGetWidth(image1);
     size_t imageHeight1 = CGImageGetHeight(image1);
     
-    // Get an already created graphic context or create a new one if necessary.
     size_t imageWidth2 = CGImageGetWidth(image2);
     size_t imageHeight2 = CGImageGetHeight(image2);
     
@@ -263,19 +282,16 @@ CGFloat ClipFloatToMinMax(CGFloat in, CGFloat min, CGFloat max)
     CIFilter *areaMaxFilter = [CIFilter filterWithName:@"CIAreaMaximum"];
     [areaMaxFilter setDefaults];
     CIImage *intermediateImage = [diffFilter valueForKey:@"outputImage"];
-    SaveCIImageToAPNGFile(intermediateImage, @"deleteme.png");
+    //    SaveCIImageToAPNGFile(intermediateImage, @"deleteme.png");
     [areaMaxFilter setValue:intermediateImage forKey:@"inputImage"];
     CGRect fromRect = CGRectMake(0.0, 0.0,
                                  (CGFloat)imageWidth1, (CGFloat)imageHeight1);
     CIVector *extentVector = [[CIVector alloc] initWithCGRect:fromRect];
     [areaMaxFilter setValue:extentVector forKey:@"inputExtent"];
     CGColorSpaceRef colorSpace = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
-    // CGColorSpaceRef colorSpace = CGColorSpaceCreateWithName(kCGColorSpaceGenericRGB);
-    //    float buff[4] = { 1.0, 1.0, 1.0, 1.0 };
+
     unsigned char buff[4];
     CGContextRef context = CGBitmapContextCreate(buff, 1, 1, 8, 16, colorSpace,
-    //CGContextRef context = CGBitmapContextCreate(buff, 1, 1, 32, 16, colorSpace,
-    //                                                kCGBitmapFloatComponents +
                                     (CGBitmapInfo)kCGImageAlphaPremultipliedLast);
 
     NSDictionary *ciContextOptions;
@@ -287,20 +303,17 @@ CGFloat ClipFloatToMinMax(CGFloat in, CGFloat min, CGFloat max)
     
     // Get the CIImage from the filter.
     CIImage *outImage = [areaMaxFilter valueForKey:kCIOutputImageKey];
-    // CGRect inRect = CGRectMake(0.0, 0.0, 1.0, 1.0);
+    CGRect inRect = CGRectMake(0.0, 0.0, 1.0, 1.0);
     CGRect outExtent = [outImage extent];
-    [ciContext drawImage:outImage inRect:outExtent fromRect:outExtent];
+    [ciContext drawImage:outImage inRect:inRect fromRect:outExtent];
     CGImageRelease(image1);
     CGImageRelease(image2);
     diffFilter = nil;
     areaMaxFilter = nil;
     extentVector = nil;
-    // Check the alpha channel as well as all the others.
-    //    if (buff[0] < self.distance && buff[1] < self.distance && buff[2] < self.distance)
-    // self.areEqual = YES;
     
-    unsigned char dist = 255 * self.distance;
-    if (buff[0] < dist && buff[1] < dist && buff[2] < dist)
+    if (buff[0] <= self.distance && buff[1] <= self.distance &&
+        buff[2] <= self.distance)
         self.areEqual = YES;
 
     CGContextRelease(context);
@@ -327,22 +340,18 @@ int main(int argc, const char * argv[])
     BOOL areEqual;
     @autoreleasepool
     {
-        //	NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
-        @autoreleasepool
+        YVSCompareImageFilesProcessor* processor;
+        processor = [[YVSCompareImageFilesProcessor alloc] initWithArgs:argc
+                                                                argv:argv];
+        if (processor)
         {
-            YVSCompareImageFilesProcessor* processor;
-            processor = [[YVSCompareImageFilesProcessor alloc] initWithArgs:argc
-                                                                    argv:argv];
-            if (processor)
-            {
-                result = [processor run];
-                areEqual = processor.areEqual;
-            }
-            else
-                [YVSCompareImageFilesProcessor printUsage];
+            result = [processor run];
+            areEqual = processor.areEqual;
         }
+        else
+            [YVSCompareImageFilesProcessor printUsage];
     }
     if (result == 0)
-        printf("Equal: %s\n", areEqual ? "YES" : "NO");
+        printf("%s", areEqual ? "SAME" : "DIFFERENT");
     return result;
 }
