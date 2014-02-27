@@ -99,6 +99,15 @@ CGImageRef CreateCGImageRemoveAlphaDependence(CGImageRef inputImage)
     return imageRef;
 }
 
+// Is there an alpha channel that I need to worry about.
+BOOL HasCGImageAlpha(CGImageRef image)
+{
+    CGImageAlphaInfo imageAlpha = CGImageGetAlphaInfo(image);
+    return !(imageAlpha == kCGImageAlphaNone ||
+        imageAlpha == kCGImageAlphaNoneSkipLast ||
+        imageAlpha == kCGImageAlphaNoneSkipFirst);
+}
+
 // Scan the string as an integer, then check value is in range for success.
 BOOL GetUnsignedCharFromString(NSString *string, unsigned char *val)
 {
@@ -280,15 +289,23 @@ CGFloat ClipFloatToMinMax(CGFloat in, CGFloat min, CGFloat max)
         self.areEqual = NO;
         return result;
     }
-
-    CGImageRef temp = CreateCGImageRemoveAlphaDependence(image1);
-    CGImageRelease(image1);
-    image1 = temp;
-    // SaveCGImageToAPNGFile(image1, @"deleteme.png");
-    temp = CreateCGImageRemoveAlphaDependence(image2);
-    CGImageRelease(image2);
-    image2 = temp;
     
+    if (HasCGImageAlpha(image1))
+    {
+        CGImageRef temp = CreateCGImageRemoveAlphaDependence(image1);
+        CGImageRelease(image1);
+        image1 = temp;
+    }
+    // SaveCGImageToAPNGFile(image1, @"deleteme.png");
+    
+    if (HasCGImageAlpha(image2))
+    {
+        CGImageRef temp = CreateCGImageRemoveAlphaDependence(image2);
+        CGImageRelease(image2);
+        image2 = temp;
+    }
+    // SaveCGImageToAPNGFile(image1, @"deleteme.png");
+
     CIFilter *diffFilter = [CIFilter filterWithName:@"CIDifferenceBlendMode"];
     [diffFilter setValue:[CIImage imageWithCGImage:image1] forKey:@"inputImage"];
     [diffFilter setValue:[CIImage imageWithCGImage:image2] forKey:@"inputBackgroundImage"];
