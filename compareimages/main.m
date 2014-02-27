@@ -58,34 +58,46 @@ void SaveCIImageToAPNGFile(CIImage *ciImage, NSString *fileName)
     size_t width = extent.size.width;
     size_t height = extent.size.height;
     CGColorSpaceRef colorSpace = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
-
     CGContextRef context = CGBitmapContextCreate(nil, width, height, 32,
                                  width * 16, colorSpace,
                                  kCGBitmapFloatComponents +
                                  (CGBitmapInfo)kCGImageAlphaPremultipliedLast);
+    CGColorSpaceRelease(colorSpace);
     CIContext *ciContext = [CIContext contextWithCGContext:context options:nil];
     [ciContext drawImage:ciImage inRect:extent fromRect:extent];
     SaveCGBitmapContextToAPNGFile(context, fileName);
     CGContextRelease(context);
 }
 
-/*
-BOOL GetCGFloatFromString(NSString *string, CGFloat *value)
+CGImageRef CreateCGImageRemoveAlphaDependence(CGImageRef inputImage)
 {
-    NSScanner *scanner = [[NSScanner alloc] initWithString:string];
-    CGFloat floatVal;
-#if defined(__LP64__) && __LP64__
-    BOOL gotValue = [scanner scanDouble:&floatVal];
-#else
-    BOOL gotValue = [scanner scanFloat:&floatVal];
-#endif
-    if (gotValue)
-    {
-        *value = floatVal;
-    }
-    return gotValue;
+    size_t width = CGImageGetWidth(inputImage);
+    size_t height = CGImageGetHeight(inputImage);
+    CGColorSpaceRef colorSpace = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
+    size_t rowBytes = width * 4;
+    if (rowBytes % 16)
+        rowBytes += 16 - rowBytes % 16;
+
+    CGContextRef context = CGBitmapContextCreate(nil, width, height, 8,
+                                                 rowBytes, colorSpace,
+                                (CGBitmapInfo)kCGImageAlphaPremultipliedLast);
+
+    CGContextSaveGState(context);
+    CGFloat colorArray[4] = { 0.0, 0.0, 0.0, 1.0 };
+    CGColorRef white = CGColorCreate(colorSpace, colorArray);
+    CGContextSetFillColorWithColor(context, white);
+    CGColorRelease(white);
+    CGRect theRect = CGRectMake(0.0, 0.0, width, height);
+    CGContextFillRect(context, theRect);
+    CGContextRestoreGState(context);
+    
+    CGColorSpaceRelease(colorSpace);
+    CGContextSetBlendMode(context, kCGBlendModeNormal);
+    CGContextDrawImage(context, CGRectMake(0.0, 0.0, width, height), inputImage);
+    CGImageRef imageRef = CGBitmapContextCreateImage(context);
+    CGContextRelease(context);
+    return imageRef;
 }
-*/
 
 // Scan the string as an integer, then check value is in range for success.
 BOOL GetUnsignedCharFromString(NSString *string, unsigned char *val)
@@ -231,7 +243,7 @@ CGFloat ClipFloatToMinMax(CGFloat in, CGFloat min, CGFloat max)
         result = -3;
         return result;
     }
-
+    
     imageSource2 = CGImageSourceCreateWithURL((__bridge CFURLRef)self.file2, nil);
     if (!(imageSource2 && CGImageSourceGetCount(imageSource2)))
     {
@@ -269,6 +281,14 @@ CGFloat ClipFloatToMinMax(CGFloat in, CGFloat min, CGFloat max)
         return result;
     }
 
+    CGImageRef temp = CreateCGImageRemoveAlphaDependence(image1);
+    CGImageRelease(image1);
+    image1 = temp;
+    // SaveCGImageToAPNGFile(image1, @"deleteme.png");
+    temp = CreateCGImageRemoveAlphaDependence(image2);
+    CGImageRelease(image2);
+    image2 = temp;
+    
     CIFilter *diffFilter = [CIFilter filterWithName:@"CIDifferenceBlendMode"];
     [diffFilter setValue:[CIImage imageWithCGImage:image1] forKey:@"inputImage"];
     [diffFilter setValue:[CIImage imageWithCGImage:image2] forKey:@"inputBackgroundImage"];
