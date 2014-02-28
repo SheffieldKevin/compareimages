@@ -82,14 +82,12 @@ CGImageRef CreateCGImageRemoveAlphaDependence(CGImageRef inputImage)
                                                  rowBytes, colorSpace,
                                 (CGBitmapInfo)kCGImageAlphaPremultipliedLast);
 
-    CGContextSaveGState(context);
     CGFloat colorArray[4] = { 0.0, 0.0, 0.0, 1.0 };
     CGColorRef white = CGColorCreate(colorSpace, colorArray);
     CGContextSetFillColorWithColor(context, white);
     CGColorRelease(white);
     CGRect theRect = CGRectMake(0.0, 0.0, width, height);
     CGContextFillRect(context, theRect);
-    CGContextRestoreGState(context);
     
     CGColorSpaceRelease(colorSpace);
     CGContextSetBlendMode(context, kCGBlendModeNormal);
@@ -359,23 +357,24 @@ CGFloat ClipFloatToMinMax(CGFloat in, CGFloat min, CGFloat max)
 
 +(void)printUsage
 {
-    printf("Compare image files. Find maximum pixel value difference between two images. Compare this difference against distance.\n");
-    printf("If image files are different dimensions then return different.\n");
-    printf("If comparison of any pixel between images is greater than -distance return \"DIFFERENT\" otherwise return \"SAME\".\n");
-    printf("    ./compareimages - usage:\n");
-	printf("	./compareimages [-parameter <value> ...]\n");
-	printf("	parameters are all preceded by a -<parameterName>.  The order of the parameters is unimportant.\n");
-	printf("	Required parameters are -file1 <File1URL> -file2 <File1URL>.\n");
-	printf("	Required parameters:\n");
-	printf("		-file1 <File1URL> The first image file for comparison.\n");
-	printf("		-file2 <File2URL> The second image file for comparison.\n");
+    printf("Compare image files.\n\n");
+    printf("Find maximum pixel value difference between two images. Compare this difference against distance parameter.\n");
+    printf("If image files have different dimensions then return \"DIFFERENT\".\n");
+    printf("If comparison of any pixel between images is greater than -distance return \"DIFFERENT\" otherwise return \"SAME\".\n\n");
+    printf("compareimages - usage:\n");
+	printf("    ./compareimages [-parameter <value> ...]\n");
+	printf("    parameters are all preceded by a -<parameterName>.  The order of the parameters is unimportant.\n");
+	printf("    Required parameters are -file1 <File1URL> -file2 <File1URL>.\n");
+	printf("    Required parameters:\n");
+	printf("        -file1 <File1URL> The first image file for comparison.\n");
+	printf("        -file2 <File2URL> The second image file for comparison.\n");
     printf("    Optional parameter:\n");
-    printf("		-distance <X> The chromatic difference in any color component permitted. Default 10. Range 0 to 255.\n");
-	printf("	Sample compareimages usage:\n");
-    printf("        A fairly fairly loose idea of what constitutes as two images being the same.\n");
-	printf("	  ./compareimages -file1 \"~/Pictures/file1.png\" -file2 \"~/Desktop/file2.png\" -distance 30\n");
-    printf("		The pixel values in image 1 have to be exactly the same as image 2 to report images as the same.\n");
-	printf("      ./compareimages -file1 \"~/Pictures/file1.png\" -file2 \"~/Desktop/file2.png\" -distance 0\n");
+    printf("        -distance <X> The chromatic difference in any color component for comparison. Default 10. Range 0 to 255.\n\n");
+	printf("    Examples of compareimages usage:\n");
+    printf("        A fairly loose idea of what constitutes as two images being the same.\n");
+	printf("            ./compareimages -file1 \"~/Pictures/file1.png\" -file2 \"~/Desktop/file2.png\" -distance 30\n");
+    printf("        The pixel values in image 1 have to be exactly the same as image 2 to report images as the same.\n");
+	printf("            ./compareimages -file1 \"~/Pictures/file1.png\" -file2 \"~/Desktop/file2.png\" -distance 0\n");
 }
 
 @end
