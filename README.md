@@ -9,7 +9,7 @@ Objective-C, Cocoa, OS X, CoreImage.
 
 ### Produced
 
-A command line tool "compareimages".
+A command line tool "compareimages" to compare images.
 
 ### Requirements
 
