@@ -100,10 +100,13 @@ CGImageRef CreateCGImageRemoveAlphaDependence(CGImageRef inputImage)
 // Is there an alpha channel that I need to worry about.
 BOOL HasCGImageAlpha(CGImageRef image)
 {
+    return YES;
+/*
     CGImageAlphaInfo imageAlpha = CGImageGetAlphaInfo(image);
     return !(imageAlpha == kCGImageAlphaNone ||
         imageAlpha == kCGImageAlphaNoneSkipLast ||
         imageAlpha == kCGImageAlphaNoneSkipFirst);
+*/
 }
 
 // Scan the string as an integer, then check value is in range for success.
